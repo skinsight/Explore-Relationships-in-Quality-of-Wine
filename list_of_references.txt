@@ -1,0 +1,6 @@
+A list of Web sites, books, forums, blog posts, github repositories, etc. that you referred to or used in creating your submission (add N/A if you did not use any such resources).
+https://s3.amazonaws.com/content.udacity-data.com/courses/ud651/diamondsExample_2016-05.html
+https://stackoverflow.com/questions/28427572/manipulating-axis-titles-in-ggpairs-ggally
+https://stackoverflow.com/questions/40675778/center-plot-title-in-ggplot2
+https://stackoverflow.com/questions/49084904/r-markdown-bullet-list-with-multiple-levels
+Review of First Project Submission

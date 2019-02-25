@@ -1,0 +1,782 @@
+---
+title: "project.rmd"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Red Wine Quality Exploration by Kathleen Flaherty
+========================================================
+
+
+```{r echo=FALSE, message=FALSE, warning=FALSE, packages}
+# Load all of the packages that I end up using in my analysis in this code
+# chunk.
+
+library(ggplot2)
+library(GGally)
+library(RColorBrewer)
+
+```
+
+```{r echo=FALSE, Load_the_Data}
+# Load the Data
+wr <- read.csv('wineQualityReds.csv')
+
+```
+
+\
+
+
+This report explores a dataset containing quality and attributes for approximately 1600 types of wine. \
+\
+
+
+# Univariate Plots Section
+
+```{r echo=FALSE, Univariate_Plots}
+dim(wr)
+```
+
+```{r echo=FALSE, Univariate_Plots2}
+str(wr)
+```
+
+```{r echo=FALSE, Univariate_Plots3}
+summary(wr)
+```
+
+Our dataset consists of 13 variables, with almost 1600 observations. Out of these 13 variables, 12 are features of wine: fixed.acidity, volatile.acidity, citric.acid, residual.sugar, chlorides, free.sulfur.dioxide, total.sulfur.dioxide, density, pH, sulphates, alcohol and quality. \
+\
+
+```{r echo=FALSE, Univariate_Plots4}
+ggplot(aes(x = quality), data = wr) + geom_histogram(binwidth = 0.5)+
+  scale_x_continuous(breaks = seq(0, 10, 1))
+```
+
+Quality of wines is in the range 3 to 8 with majority wines being rated 5 or 6. I explore other features below: \
+\
+
+
+```{r echo=FALSE, Univariate_Plots5}
+ggplot(aes(x = fixed.acidity), data = wr) + geom_histogram(binwidth = 1)+
+  scale_x_continuous(breaks = seq(0, 18, 2))
+
+```
+
+fixed.acidity is in the range 4.6 to 15.9 and is right skewed\
+\
+
+
+
+```{r echo=FALSE, Univariate_Plots6}
+ggplot(aes(x = total.sulfur.dioxide), data = wr) +geom_histogram(binwidth = 10)+
+  scale_x_continuous(breaks = seq(0, 300, 20))
+```
+
+total.sulfur.dioxide is in the range 6.8 to 289 and is very right skewed. Doing log transformation on total.sulfur.dioxide data as it is very right skewed:
+
+
+```{r echo=FALSE, Univariate_Plots7}
+ggplot(aes(x = log10(total.sulfur.dioxide)), data = wr) + 
+  geom_histogram(binwidth = 0.25)+
+  scale_x_continuous(breaks = seq(0, 2.5, 0.5))
+```
+
+Log transformed total.sulfur.dioxide has approximately no skew \
+\
+
+
+```{r echo=FALSE, Univariate_Plots8}
+ggplot(aes(x = pH), data = wr) + geom_histogram(binwidth = 0.1)+ 
+  scale_x_continuous(breaks = seq(0, 5, 0.2))
+
+```
+
+pH is in the range 2.74 to 4.01 and has approximately no skew \
+\
+
+
+```{r echo=FALSE, Univariate_Plots9}
+ggplot(aes(x = alcohol), data = wr) + geom_histogram(binwidth = 0.5)+ 
+  scale_x_continuous(breaks = seq(5, 15, 1))
+
+```
+
+alcohol is in the range 8.4 to 14.9 and is right skewed \
+\
+
+
+```{r echo=FALSE, Univariate_Plots10}
+ggplot(aes(x = volatile.acidity), data = wr) + geom_histogram(binwidth = 0.1)+ 
+  scale_x_continuous(breaks = seq(0, 1.6, 0.2))
+
+```
+
+volatile.acidity is in the range 0.12 to 1.58 and has a right skew \
+\
+
+
+```{r echo=FALSE, Univariate_Plots11}
+ggplot(aes(x = residual.sugar), data = wr) + geom_histogram(binwidth = 1)+ 
+  scale_x_continuous(breaks = seq(0, 16, 2))
+
+```
+
+residual.sugar is in range 0.9 to 15.5 and is very right skewed. Doing log transformation on residual.sugar data as it is very right skewed:
+
+```{r echo=FALSE, Univariate_Plots12}
+ggplot(aes(x = log10(1+residual.sugar)), data = wr) + 
+  geom_histogram(binwidth = 0.1) + 
+  scale_x_continuous(breaks = seq(0, 13, 0.4))
+```
+
+log transformed residual.sugar is less right skewed than residual.sugar \
+\
+
+
+I see from the above plots that fixed.acidity, total.sulphur.dioxide, residual.sugar and alcohol are skewed to the right. pH has approximately no skew.\
+\
+
+
+#### Create categorical variable acidity levels. 
+
+* Acidity Levels: 
+    + High: Lowest 25% of pH values 
+    + Moderately High: 25% - 50% of pH values 
+    + Medium: 50% - 75% of pH values 
+    + Low: 75% - max pH value 
+
+```{r echo=FALSE, Univariate_Plots13}
+bin_edges<- c(2.74, 3.21, 3.31, 3.4, 4.01)
+bin_names<- c('high', 'mod_high', 'medium', 'low')
+wr$acidity_levels <- cut(wr$pH, bin_edges, bin_names)
+str(wr)
+```
+
+Explore which level of acidity receives the highest average quality rating
+
+```{r echo=FALSE, Univariate_Plots14}
+ggplot(aes(x = quality), data = subset(wr, !is.na(acidity_levels))) + 
+  geom_histogram(binwidth = 0.5) + scale_x_continuous(breaks = seq(0, 10, 1)) +
+  facet_wrap(~acidity_levels)
+```
+
+```{r echo=FALSE, Univariate_Plots15}
+by(wr$quality, wr$acidity_levels, summary)
+```
+
+High level of acidity receives highest average quality rating for red wine. However, the median quality rating for the different levels is same.\
+\
+
+
+#### Create categorical variable alcohol levels. 
+
+* Alcohol Levels:
+    + Low: Lowest 25% of alcohol values
+    + Medium: 25% - 50% of alcohol values
+    + Moderately High: 50% - 75% of alcohol values
+    + High: 75% - max alcohol value
+
+```{r echo=FALSE, Univariate_Plots16}
+bin_edges<- c(8.4, 9.5, 10.2, 11.1, 14.9)
+bin_names<- c('low', 'medium', 'mod_high', 'high')
+wr$alcohol_levels <- cut(wr$alcohol, bin_edges, bin_names)
+str(wr)
+```
+
+
+Explore which level of alcohol receives the highest average quality rating
+
+```{r echo=FALSE, Univariate_Plots17}
+ggplot(aes(x = quality), data = subset(wr, !is.na(alcohol_levels))) + 
+  geom_histogram(binwidth = 0.5) + scale_x_continuous(breaks = seq(0, 10, 1)) + 
+  facet_wrap(~alcohol_levels)
+```
+
+```{r echo=FALSE, Univariate_Plots18}
+by(wr$quality, wr$alcohol_levels, summary)
+```
+
+High level of alcohol receives highest average quality rating for red wine. Also, the median quality rating for the high alcohol levels is high compared to low alcohol level.\
+\
+
+
+#### Create categorical variable volatile.acidity levels. 
+
+* Volatile.Acidity Levels:
+    + Low: Lowest 25% of volatile.acidity values
+    + Medium: 25% - 50% of volatile.acidity values
+    + Moderately High: 50% - 75% of volatile.acidity values
+    + High: 75% - max volatile.acidity value
+
+```{r echo=FALSE, Univariate_Plots19}
+bin_edges<- c(0.12, 0.39, 0.52, 0.64, 1.58)
+bin_names<- c('low', 'medium', 'mod_high', 'high')
+wr$volatileacidity_levels <- cut(wr$volatile.acidity, bin_edges, bin_names)
+str(wr)
+```
+
+
+Explore which volatile.acidity level receives the highest average quality rating
+
+```{r echo=FALSE, Univariate_Plots20}
+ggplot(aes(x = quality), data = subset(wr, !is.na(volatileacidity_levels))) + 
+  geom_histogram(binwidth = 0.5) + scale_x_continuous(breaks = seq(0, 10, 1)) + 
+  facet_wrap(~volatileacidity_levels)
+```
+
+```{r echo=FALSE, Univariate_Plots21}
+by(wr$quality, wr$volatileacidity_levels, summary)
+```
+
+High level of volatile.acidity receives lowest average quality for red wine. Also, the median quality rating for the high volatile.acidity levels is low compared to low volatile.acidity level.\
+\
+\
+
+
+
+# Univariate Analysis
+
+### What is the structure of your dataset?
+
+* There are 1599 wines in the dataset with 12 features (fixed.acidity, volatile.acidity, citric.acid, residual.sugar, chlorides, free.sulfur.dioxide, total.sulfur.dioxide, density, pH, sulphates, alcohol, quality). All feaures for red wine in raw data are type num or int and there are no factor type features. 
+
+* Other observations:
+    + Quality of wines is in the range 3 to 8 with majority of wines being rated 5 or 6. Median quality rating of red wines is 6
+    + fixed.acidity, total.sulphur.dioxide, residual.sugar and alcohol are skewed to the right. pH has approximately no skew
+    + High level of acidity receives the highest average quality rating for red wine. However, the median quality rating for the different acidity levels is same
+    + High level of alcohol receives the highest average quality rating for red wine. Also, the median quality rating for the high alcohol levels is high compared to low alcohol level
+    + High level of volatile.acidity receives lowest average quality rating for red wine. Also, the median rating for the high volatile.acidity levels is low compared to low volatile.acidity level
+    + Median residual.sugar is 2.2
+    + 75% of red wines have alcohol more than 9.5
+    + Mean density of red wine is 0.9967\
+    \
+
+
+
+### What is/are the main feature(s) of interest in your dataset?
+The main feature in the data set is quality of red wine. I'd like to determine which features are best for predicting the quality rating of red wine. I think it is possible that some or all of these features can be used to build a 
+predictive model for quality rating of red wine: Fixed Acidity, Total Sulfur Dioxide, pH, Alcohol, Volatile Acidity, and Residual Sugar.\
+\
+
+
+### What other features in the dataset do you think will help support your \
+investigation into your feature(s) of interest?
+Fixed Acidity, Total Sulfur Dioxide, pH, Alcohol, Volatile Acidity, and Residual Sugar likely contribute to the quality of red wine\
+\
+
+
+### Did you create any new variables from existing variables in the dataset?
+I created the following categorical variables: 
+
+* Acidity Levels
+* Alcohol Levels
+* Volatile.Acidity Levels
+
+I created these variables to explore which level of acidity, alcohol and volatile.acidity receive the highest average quality rating\
+\
+
+
+
+### Of the features you investigated, were there any unusual distributions? \
+Did you perform any operations on the data to tidy, adjust, or change the form of the data? If so, why did you do this?
+I log-transformed the right skewed total.sulphur.dioxide and residual.sugar distributions. The transformed distribution for both total.sulphur.dioxide and residual.sugar are unimodal. While exploring which level of acidity receives the highest average quality rating, I removed the data points that had missing value for acidity levels. This means that I removed the data points that had missing value for pH.\
+\
+\
+\
+
+
+# Bivariate Plots Section
+
+```{r echo=FALSE, Bivariate_Plots1}
+wr_subset = wr[c('fixed.acidity', 'total.sulfur.dioxide', 'pH', 'alcohol', 
+                 'volatile.acidity', 'residual.sugar', 'quality')]
+round(cor(wr_subset, use = "complete.obs"), 3)
+
+```
+
+##Scatterplot Matrices
+```{r echo=FALSE, Bivariate_Plots2}
+old <- theme_set(theme_bw())
+theme_set(theme_minimal(7))
+
+# set the seed for reproducible results
+set.seed(20022012)
+
+ggpairs(wr_subset[sample.int(nrow(wr_subset), 1000), ])
+
+```
+
+Alcohol has a meaningful positive correlation with quality of red wine. volatile.acidity has a meaningful negative correlation with quality of red wine.\
+\
+
+
+### Scatter Plots\
+\
+
+
+####quality vs alcohol
+
+```{r echo=FALSE, Bivariate_Plots3}
+theme_set(old)
+ggplot(aes(x = quality, y = alcohol), data = wr) + geom_point()
+```
+
+A scatter plot is not appropriate when one of the features is discrete (quality). The reason is the overplotting that makes it difficult to appreciate the distribution for each discrete level. Using geom_jitter and geom_boxplot to prevent affects of over plotting:
+
+
+```{r echo=FALSE, Bivariate_Plots4}
+ggplot(aes(factor(quality), 
+            alcohol), 
+        data = wr) +
+  geom_jitter( alpha = .3)  +
+  geom_boxplot( alpha = .5,color = 'blue')+
+  stat_summary(fun.y = "mean", 
+               geom = "point", 
+               color = "red", 
+               shape = 8, 
+               size = 4)
+```
+
+
+I wanted to explore relationship between alcohol content of red wine and quality of red wine. Based on the plots above, it looks like there is a positive relationship between alcohol and quality. I was expecting this positive relationship. It makes sense to me that people will give higher rating to wines with higher alcohol content. \
+\
+
+
+####quality vs volatile.acidity
+
+```{r echo=FALSE, Bivariate_Plots5}
+ggplot(aes(x = quality, y = volatile.acidity), data = wr) + geom_point()
+```
+
+A scatter plot is not appropriate when one of the features is discrete (quality). The reason is the overplotting that makes it difficult to appreciate the distribution for each discrete level. Using geom_jitter and geom_boxplot to prevent affects of over plotting:
+
+
+```{r echo=FALSE, Bivariate_Plots6}
+ggplot(aes(factor(quality), 
+            volatile.acidity), 
+        data = wr) +
+  geom_jitter( alpha = .3)  +
+  geom_boxplot( alpha = .5,color = 'blue')+
+  stat_summary(fun.y = "mean", 
+               geom = "point", 
+               color = "red", 
+               shape = 8, 
+               size = 4)
+```
+
+
+I wanted to explore relationship between volatile.acidity of red wine and quality of red wine. Based on the plots above, it looks like there is a negative relationship between volatile.acidity and quality. I was expecting some
+relationship but was not sure if it will be a negative or a positive relationship before I generated the correlation numbers and the above plots. \
+\
+
+
+####quality vs total.sulfur.dioxide
+
+```{r echo=FALSE, Bivariate_Plots7}
+ggplot(aes(x = quality, y = total.sulfur.dioxide), data = wr) + geom_point()
+```
+
+A scatter plot is not appropriate when one of the features is discrete (quality). The reason is the overplotting that makes it difficult to appreciate the distribution for each discrete level. Using geom_jitter and geom_boxplot to prevent affects of over plotting:
+
+```{r echo=FALSE, Bivariate_Plots8}
+ggplot(aes(factor(quality), 
+            total.sulfur.dioxide), 
+        data = wr) +
+  geom_jitter( alpha = .3)  +
+  geom_boxplot( alpha = .5,color = 'blue')+
+  stat_summary(fun.y = "mean", 
+               geom = "point", 
+               color = "red", 
+               shape = 8, 
+               size = 4)
+```
+
+I wanted to explore relationship between total.sulfur.dioxide of red wine and quality of red wine. Based on the plots above, it looks like there is a weak negative relationship between total.sulfur.dioxide and quality. I was expecting some relationship but was not sure if it will be a negative or a positive relationship before I generated the correlation numbers and the above plots. \
+\
+
+
+### Box Plots\
+\
+
+
+#### quality vs acidity_levels
+```{r echo=FALSE, Bivariate_Plots10}
+ggplot(aes(x = acidity_levels, y = quality), 
+       data = subset(wr, !is.na(acidity_levels))) + 
+  geom_boxplot() + coord_cartesian(ylim = c(5, 6.5))
+```
+
+
+Median quality of red wines for different acidity levels is same value 6.0. From box plots, it looks like the relationship between quality of red wine and pH based acidity levels is weak. This weak relationship can also be seen from the low correlation between quality and pH: -0.05.
+
+
+```{r echo=FALSE, Bivariate_Plots11}
+by(wr$quality, wr$acidity_levels, summary)
+```
+
+
+\
+\
+
+
+#### quality vs alcohol_levels
+```{r echo=FALSE, Bivariate_Plots12}
+ggplot(aes(x = alcohol_levels, y = quality), data = 
+         subset(wr, !is.na(alcohol_levels))) + geom_boxplot() + 
+  coord_cartesian(ylim = c(2.5, 9))
+```
+
+
+Median quality rating for the high alcohol levels is high compared to low alcohol level. From box plots, it looks like the relationship between quality of red wine and alcohol levels is positive relationship. This positive relationship can also be seen from the high positive correlation between quality and alcohol: 0.43.
+
+```{r echo=FALSE, Bivariate_Plots13}
+by(wr$quality, wr$alcohol_levels, summary)
+```
+
+\
+\
+
+
+#### quality vs volatileacidity_levels
+```{r echo=FALSE, Bivariate_Plots14}
+ggplot(aes(x = volatileacidity_levels, y = quality), 
+       data = subset(wr, !is.na(volatileacidity_levels))) + 
+  geom_boxplot() + coord_cartesian(ylim = c(1, 10))
+```
+
+
+Median quality rating for high volatile.acidity levels is low compared to low volatile.acidity level. From box plots, it looks like the relationship between quality of red wine and volatile.acidity levels is negative. This negative relationship can also be seen from the moderately negative correlation between quality and volatile.acidity: -0.37.
+
+```{r echo=FALSE, Bivariate_Plots15}
+by(wr$quality, wr$volatileacidity_levels, summary)
+```
+
+\
+\
+
+
+### Heat Maps\
+\
+
+#### quality vs acidity_levels
+
+```{r echo=FALSE, Bivariate_Plots16}
+ggplot(aes(x = acidity_levels, y = quality, fill = acidity_levels), 
+       data = subset(wr, !is.na(acidity_levels))) + 
+  geom_tile() +
+  scale_fill_brewer(type='seq',
+                   guide=guide_legend(title='acidity_levels'))
+
+
+```
+
+
+Based on the heat map between quality and acidity_levels, I don't see a relationship between quality and acidity_levels
+
+
+\
+
+
+
+#### quality vs alcohol_levels
+```{r echo=FALSE, Bivariate_Plots17}
+ggplot(aes(x = alcohol_levels, y = quality, fill = alcohol_levels), 
+       data = subset(wr, !is.na(alcohol_levels))) + 
+  geom_tile() +
+  scale_fill_brewer(type='seq',
+                   guide=guide_legend(title='alcohol_levels'))
+
+
+```
+
+
+Based on the heat map between quality and alcohol_levels, I see a relationship between quality and alcohol_levels: High alcohol_levels have higher quality than low alcohol_levels
+
+\
+
+
+#### quality vs volatileacidity_levels
+```{r echo=FALSE, Bivariate_Plots18a}
+ggplot(aes(x = volatileacidity_levels, y = quality, fill = volatileacidity_levels), 
+       data = subset(wr, !is.na(volatileacidity_levels))) + 
+  geom_tile() +
+  scale_fill_brewer(type='seq',
+                   guide=guide_legend(title='volatileacidity_levels'))
+
+```
+
+Based on the heat map between quality and volatileacidity_levels, I see a relationship between quality and volatileacidity_levels: High volatileacidity_levels have lower quality than low volatileacidity_levels
+
+\
+\
+
+
+# Bivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the investigation. How did the feature(s) of interest vary with other features in the dataset?
+
+Alcohol has a meaningful positive correlation with quality of red wine. As alcohol increases, quality of red wine increases. Volatile.acidity has a meaningful negative correlation with quality of red wine. As volatile.acidity increases, quality of red wine decreases. Scatter plots, Box plots and Heat Maps all show positive relationship between alcohol and quality and negative relationship between Volatile.acidity and quality \
+\
+
+
+### Did you observe any interesting relationships between the other features (not the main feature(s) of interest)?
+pH and fixed.acidity have a very high negative correlation (-0.677). As pH increases, fixed.acidity decreases. This makes sense as when pH increases acidity should decrease and liquid should be more alkaline. However, volatilie.acidity and pH have a positive relationship which is opposite of fixed.acidity. \
+\
+
+
+### What was the strongest relationship you found?
+Alcohol has a relatively strong positive correlation with quality of red wine (Correlation: 0.43). Volatile.acidity has a relatively strong negative correlation (Correlation: -0.37). From Heat Maps and box plots too, positive relationship between alcohol and quality and negative relationship between Volatile.acidity and quality hold. \
+\
+\
+\
+
+
+# Multivariate Plots Section
+
+#### Explore how different levels of variable y influence relationship between quality and variable x. x and y vary for the following plots:
+
+```{r echo=FALSE, Multivariate_Plots1}
+ggplot(aes(x = factor(quality),
+           y = alcohol), 
+           data = subset(wr, !is.na(acidity_levels))) + 
+   geom_boxplot( aes(fill= acidity_levels))  +
+  scale_fill_brewer(type='seq',
+                   guide=guide_legend(title='acidity_levels'))
+``` 
+
+I explored how different levels of acidity_levels influence relationship between quality and alcohol in the above plot. alcohol and quality have a positive relationship for all levels of acidity_levels. IQR of alcohol is high for low acidity_levels and high quality. \
+\
+
+
+
+```{r echo=FALSE, Multivariate_Plots2}
+ggplot(aes(x = factor(quality),
+           y = alcohol), 
+           data = subset(wr, !is.na(volatileacidity_levels))) + 
+   geom_boxplot( aes(fill= volatileacidity_levels))  +
+  scale_fill_brewer(type='seq',
+                   guide=guide_legend(title='volatileacidity_levels'))
+```  
+
+I explored how different levels of volatileacidity_levels influence relationship between quality and alcohol in the above plot. alcohol and quality have a positive relationship for all levels of volatileacidity_levels. IQR of alcohol is higher for lower and medium quality ratings and low volatileacidity_levels. \
+\
+
+
+```{r echo=FALSE, Multivariate_Plots3}
+ggplot(aes(x = factor(quality),
+           y = volatile.acidity), 
+           data = subset(wr, !is.na(acidity_levels))) + 
+   geom_boxplot( aes(fill= acidity_levels))  +
+  scale_fill_brewer(type='seq',
+                   guide=guide_legend(title='acidity_levels'))
+```  
+
+I explored how different levels of acidity_levels influence relationship between quality and volatile.acidity in the above plot. volatile.acidity and quality have a negative relationship for all levels of acidity_levels. IQR of volatile.acidity is high for low acidity_levels and low quality ratings. \
+\
+
+
+```{r echo=FALSE, Multivariate_Plots4}
+ggplot(aes(x = factor(quality),
+           y = volatile.acidity), 
+           data = subset(wr, !is.na(alcohol_levels))) + 
+   geom_boxplot( aes(fill= alcohol_levels))  +
+  scale_fill_brewer(type='seq',
+                   guide=guide_legend(title='alcohol_levels'))
+```  
+
+I explored how different levels of alcohol_levels influence relationship between quality and volatile.acidity in the above plot. volatile.acidity and quality have a negative relationship for all levels of alcohol_levels. IQR of volatile.acidity is high for high alcohol_levels and low quality ratings. \
+\
+
+
+```{r echo=FALSE, Multivariate_Plots5}
+ggplot(aes(x = factor(quality),
+           y = pH), 
+           data = subset(wr, !is.na(volatileacidity_levels))) + 
+   geom_boxplot( aes(fill= volatileacidity_levels))  +
+  scale_fill_brewer(type='seq',
+                   guide=guide_legend(title='volatileacidity_levels'))
+```  
+
+
+I explored how different levels of volatileacidity_levels influence relationship between quality and pH in the above plot. pH and quality have no relationship for all levels of volatileacidity_levels. IQR is similar for all the different volatileacidity_levels and quality ratings. \
+\
+
+
+```{r echo=FALSE, Multivariate_Plots6}
+ggplot(aes(x = factor(quality),
+           y = pH), 
+           data = subset(wr, !is.na(alcohol_levels))) + 
+   geom_boxplot( aes(fill= alcohol_levels))  +
+  scale_fill_brewer(type='seq',
+                   guide=guide_legend(title='alcohol_levels'))
+```                   
+
+I explored how different levels of alcohol_levels influence relationship between quality and pH in the above plot. Separating the relationship between quality and pH based on different alcohol levels, I find that for top 75% of alcohol amounts, quality and pH have a negative correlation \
+\
+
+
+```{r echo=FALSE,Multivariate_Plots11}
+
+ggplot(aes(x = alcohol, y = quality, color = acidity_levels), 
+       data = subset(wr, !is.na(acidity_levels))) + 
+  geom_point(alpha = 0.5, size = 1, position = 'jitter') +
+  scale_color_brewer(type = 'div',
+    guide = guide_legend(title = 'Acidity Levels', reverse = T,
+    override.aes = list(alpha = 1, size = 2))) +
+  ggtitle('Quality vs Alcohol and Acidity Levels')
+```
+
+I can see from this above plot also that quality is higher for higher alcohol amount. But I cannot see a clear relationship of quality with acidity levels (pH). \
+\
+
+
+```{r echo=FALSE,Multivariate_Plots12}
+
+ggplot(aes(x = alcohol, y = quality, color = volatileacidity_levels), 
+       data = subset(wr, !is.na(volatileacidity_levels))) + 
+  geom_point(alpha = 0.5, size = 1, position = 'jitter') +
+  scale_color_brewer(type = 'div',
+    guide = guide_legend(title = 'Volatilie Acidity Levels', reverse = T,
+    override.aes = list(alpha = 1, size = 2))) +
+  ggtitle('Quality vs Alcohol and Volatile Acidity Levels')
+```
+
+I can see from this above plot also that quality is higher for higher alcohol amount and quality is higher for lower volatile.acidity. \
+\
+
+
+```{r echo=FALSE,Multivariate_Plots13}
+
+ggplot(aes(x = pH, y = quality, color = alcohol_levels), 
+       data = subset(wr, !is.na(alcohol_levels))) + 
+  geom_point(alpha = 0.5, size = 1, position = 'jitter') +
+  scale_color_brewer(type = 'div',
+    guide = guide_legend(title = 'Alcohol Levels', reverse = T,
+    override.aes = list(alpha = 1, size = 2))) + facet_wrap(~alcohol_levels) +
+  ggtitle('Quality vs pH and Alcohol Levels Facets')
+```
+
+This scatter plot of quality vs pH faceted with alcohol levels also shows how for top 75% of alcohol levels, negative relationship between quality and pH is more meaningful. \
+\
+
+
+
+#### Explore Linear models of quality of wine vs alcohol, volatile.acidity, total.sulfur.dioxide, fixed.acidity
+```{r echo=FALSE, Multivariate_Plots14}
+m1 <- lm(quality ~ alcohol, data = wr)
+summary(m1)
+m2 <- update(m1, ~ . + volatile.acidity)
+summary(m2)
+m3 <- update(m2, ~ . + total.sulfur.dioxide)
+summary(m3)
+m4 <- update(m3, ~ . + fixed.acidity)
+summary(m4)
+
+```
+
+\
+\
+
+
+# Multivariate Analysis
+
+### Talk about some of the relationships you observed in this part of the investigation. Were there features that strengthened each other in terms of looking at your feature(s) of interest?
+I found that as the acidity level increased, relationship between quality and alcohol became stronger. Also, I found that as the alcohol level increased, relationship between pH and alcohol became stronger. \
+\
+
+
+### Were there any interesting or surprising interactions between features?
+One surprising interaction was of alcohol and pH influencing the relationship of qualtiy and pH. I saw that overall the relationship between quality of red wine and pH is weak. But on separating the relationship between quality and pH based on different alcohol levels, I find that for top 75% of alcohol amounts, quality and pH have a negative correlation. This is interesting because without having explored the interaction of alcohol and pH, I would not have been able to find this negative relationship between quality and pH dependent upon alcohol level being in top 75%. \
+\
+
+
+### OPTIONAL: Did you create any models with your dataset? Discuss the strengths and limitations of your model.
+Yes, I created a linear model of quality of wine vs alcohol, volatile.acidity, 
+total.sulfur.dioxide, fixed.acidity. The final adjusted R square value is 0.3256. Each feature contributes in increasing the adjusted R square value. The final model is: 
+quality = 2.9117 + 0.30914 * alocohol + -1.2859 * volatile.acidity + -0.0017 * total.sulfur.dioxide + 
+          0.0315 * fixed.acidity \
+This model is an okay model. It is possible that if I explore non linear relationships, I can get a better model. \
+\
+\
+\
+
+
+# Final Plots and Summary
+
+### Plot One
+```{r echo=FALSE, Plot_Two}
+ggplot(aes(factor(quality), 
+            alcohol), 
+        data = wr) +
+  geom_jitter( alpha = .3)  +
+  geom_boxplot( alpha = .5,color = 'blue')+
+  stat_summary(fun.y = "mean", 
+               geom = "point", 
+               color = "red", 
+               shape = 8, 
+               size = 4) + 
+  ggtitle('Quality vs Alcohol') + labs(y = "Alcohol [%]") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+### Description One
+Alcohol has a meaningful positive correlation with quality of red wine. As alcohol increases, quality of red wine increases. I have found alcohol amount to have the strongest relationship with quality of red wine. Correlation between quality and alcohol: 0.43. \
+\
+\
+
+
+### Plot Two
+```{r echo=FALSE, Plot_One}
+ggplot(aes(x = quality), data = subset(wr, !is.na(volatileacidity_levels))) + 
+  geom_histogram(binwidth = 0.5) +
+  scale_x_continuous(breaks = seq(0, 10, 1)) + 
+  facet_wrap(~volatileacidity_levels) +
+  ggtitle('Quality vs Volatile Acidity Levels') +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+
+### Description Two
+High level of volatile.acidity receives lowest average quality rating for red wine. Volatile.acidity is an important feature that has a negative relationship with quality of red wine. \
+\
+\
+
+
+### Plot Three
+```{r echo=FALSE, Plot_Three}
+ggplot(aes(x = factor(quality),
+           y = pH), 
+           data = subset(wr, !is.na(alcohol_levels))) + 
+   geom_boxplot( aes(fill= alcohol_levels)) +
+  ggtitle('Quality vs pH at Different Alcohol Levels') +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_fill_brewer(type='seq',
+                   guide=guide_legend(title='alcohol_levels'))
+
+```
+
+### Description Three
+I saw that overall the relationship between quality of red wine and pH is weak. But on separating the relationship between quality and pH based on different alcohol levels, I find that for top 75% of alcohol amounts, qualtiy and pH
+have a negative correlation. This is interesting as without exploring the interaction of alcohol and pH, I would not have been able to find this negative relationship between quality and pH dependent upon alcohol level being in top 75%. Alcohol amount strengthens the relationship between pH and quality of red wine.\
+\
+\
+\
+
+
+# Reflection
+
+The red wine data set contains information on almost 1600 red wines across 12 features of red wine. I started by exploring and understanding the individual variables in the data set. I also created my own variables derived from the
+original data variables to help me make better observations about the data. Then, I explored bivariate relationships for quality of wine with other variables like Fixed Acidity, Total Sulfur Dioxide, pH, Alcohol, Volatile Acidity, and Residual Sugar. Finally, I did multivariate analysis and created a linear model of quality of wine vs some relevant features. \
+\
+
+There was a clear trend between alcohol amount of red wine and quality of red wine. quality of red wine and volatile acidity of red wine also had a meaningful negative relationship. I was surprised that the pH of red wine and quality of red wine had a weak relationship. On further investigating the relationship of pH vs quality, I found that for top 75% of the alcohol levels, pH and quality of red wine have a strong negative relationship. This makes sense to me as my expectation was that with higher acidity quality of wine will improve. For the linear model, I fit a model of quality of wine vs alcohol, volatile.acidity, total.sulfur.dioxide, and fixed.acidity. The final model is: 
+quality = 2.9117 + 0.30914 * alcohol + -1.2859 * volatile.acidity + -0.0017 * total.sulfur.dioxide 
+          + 0.0315 * fixed.acidity \
+This model has an adjusted R square value of 0.3256 \ 
+\
+
+
+One limitation of this model is that it does not explore non linear relationships between quality and other variables. Another limitation of this linear model is that I am doing a linear regression fit on features which do not look normally distributed. I think the model can be improved if I transform variables and also explore non linear relationships. In future, I will be interested in exploring these methods to improve the model. I am also interested in classifying the red wines based on different wineries and seeing if there is a relationship of quality vs the winery.
